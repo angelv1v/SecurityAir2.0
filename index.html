@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0f1e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SecurityAir">
+  <meta name="description" content="Monitor IoT de gases y humo para ESP32">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>SecurityAir — Monitor IoT</title>
+  <style>
+    /* ─── RESET & BASE ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg-deep:     #0a0f1e;
+      --bg-card:     #111827;
+      --bg-input:    #0d1424;
+      --border:      #1e2d45;
+      --border-glow: #2563eb44;
+      --blue:        #3b82f6;
+      --blue-light:  #60a5fa;
+      --cyan:        #06b6d4;
+      --red:         #ef4444;
+      --red-soft:    #fca5a5;
+      --orange:      #f97316;
+      --orange-soft: #fdba74;
+      --green:       #22c55e;
+      --green-soft:  #86efac;
+      --text-1:      #f1f5f9;
+      --text-2:      #94a3b8;
+      --text-3:      #475569;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.875rem;
+      --radius-lg:   1.25rem;
+      --safe-top:    env(safe-area-inset-top, 0px);
+      --safe-bot:    env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-deep);
+      color: var(--text-1);
+      font-family: -apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    /* ─── PANTALLAS ─── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bot);
+    }
+    .screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(60px);
+    }
+
+    /* ─── PANTALLA 1: CONFIGURACIÓN ─── */
+    #screen-config {
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      background: radial-gradient(ellipse at 50% 0%, #162448 0%, var(--bg-deep) 65%);
+    }
+
+    .config-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem 1.75rem;
+      box-shadow: 0 0 60px #1d4ed822, 0 24px 60px #00000066;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .brand-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #1d4ed8, #0891b2);
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1rem;
+      box-shadow: 0 0 24px #2563eb55;
+    }
+    .brand h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text-1);
+    }
+    .brand p {
+      font-size: 0.8rem;
+      color: var(--text-2);
+      margin-top: 0.25rem;
+    }
+
+    .step-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--blue-light);
+      background: #1d4ed818;
+      border: 1px solid #2563eb44;
+      border-radius: 999px;
+      padding: 0.25rem 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .field-group { margin-bottom: 1.1rem; }
+    .field-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.4rem;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap .input-icon {
+      position: absolute;
+      left: 0.875rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      pointer-events: none;
+    }
+    .field-group input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-1);
+      font-size: 0.95rem;
+      padding: 0.75rem 0.875rem 0.75rem 2.5rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-group input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px #3b82f622;
+    }
+    .field-group input::placeholder { color: var(--text-3); }
+
+    /* IP field */
+    .field-group input.ip-input { padding-left: 2.5rem; }
+
+    .hint {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      margin-top: 0.35rem;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb, #0891b2);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 0.9rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 20px #2563eb44;
+    }
+    .btn-primary:active { opacity: 0.85; transform: scale(0.985); }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25rem 0;
+    }
+
+    .info-block {
+      background: #0d1424;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      font-size: 0.78rem;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .info-block strong { color: var(--cyan); }
+
+    /* ─── PANTALLA 2: MONITOR ─── */
+    #screen-monitor {
+      background: var(--bg-deep);
+    }
+
+    /* STATUS BAR AREA */
+    .monitor-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.25rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .monitor-header .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .monitor-header .brand-icon-sm {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #1d4ed8, #0891b2);
+      border-radius: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .monitor-header h2 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .monitor-header p {
+      font-size: 0.7rem;
+      color: var(--text-2);
+      margin-top: 0.05rem;
+    }
+
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .conn-badge.ok    { color: var(--green); border-color: #22c55e44; background: #22c55e0d; }
+    .conn-badge.warn  { color: var(--orange); border-color: #f9731644; background: #f973160d; }
+    .conn-badge.err   { color: var(--red); border-color: #ef444444; background: #ef44440d; }
+    .conn-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .conn-dot.pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ALERTA PRINCIPAL */
+    .alert-banner {
+      margin: 0.85rem 1.1rem 0;
+      padding: 0.85rem 1.1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+    .alert-banner.safe    { background: #16a34a0d; border-color: #22c55e44; }
+    .alert-banner.caution { background: #d977060d; border-color: #f9731644; }
+    .alert-banner.danger  { background: #dc26260d; border-color: #ef444466;
+                            animation: dangerPulse 1s ease infinite; }
+    .alert-banner.loading { background: #33415508; border-color: var(--border); }
+    @keyframes dangerPulse {
+      0%, 100% { border-color: #ef444466; }
+      50%      { border-color: #ef4444cc; }
+    }
+
+    .alert-icon { font-size: 1.75rem; flex-shrink: 0; }
+    .alert-text { flex: 1; }
+    .alert-text .alert-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-2);
+    }
+    .alert-text .alert-msg {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-top: 0.1rem;
+    }
+    .alert-banner.safe    .alert-msg { color: var(--green); }
+    .alert-banner.caution .alert-msg { color: var(--orange); }
+    .alert-banner.danger  .alert-msg { color: var(--red); }
+    .alert-banner.loading .alert-msg { color: var(--text-2); }
+
+    /* SECCIÓN DE SENSORES */
+    .sensors-section {
+      padding: 0.85rem 1.1rem 0;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-3);
+      margin-bottom: 0.65rem;
+    }
+
+    .sensor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.3s;
+    }
+    .sensor-card.safe    { border-left: 3px solid var(--green); }
+    .sensor-card.caution { border-left: 3px solid var(--orange); }
+    .sensor-card.danger  { border-left: 3px solid var(--red); }
+    .sensor-card.loading { border-left: 3px solid var(--border); }
+
+    .sensor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .sensor-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .sensor-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .sensor-icon.smoke { background: #ef44441a; }
+    .sensor-icon.gas   { background: #f973161a; }
+    .sensor-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .sensor-sub {
+      font-size: 0.68rem;
+      color: var(--text-3);
+    }
+
+    .status-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .status-pill.safe    { background: #22c55e18; color: var(--green);  border: 1px solid #22c55e44; }
+    .status-pill.caution { background: #f9731618; color: var(--orange); border: 1px solid #f9731644; }
+    .status-pill.danger  { background: #ef444418; color: var(--red);    border: 1px solid #ef444466; }
+    .status-pill.loading { background: var(--border); color: var(--text-3); border: none; }
+
+    /* BARRA DE NIVEL */
+    .level-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+    }
+    .level-label { font-size: 0.7rem; color: var(--text-2); width: 90px; flex-shrink: 0; }
+    .level-bar-wrap {
+      flex: 1;
+      height: 7px;
+      background: #1e2d45;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .level-bar {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.6s ease;
+      min-width: 2px;
+    }
+    .level-bar.smoke-bar { background: linear-gradient(90deg, #ef4444, #fca5a5); }
+    .level-bar.gas-bar   { background: linear-gradient(90deg, #f97316, #fdba74); }
+    .level-value {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-1);
+      width: 68px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .sensor-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .detail-item { }
+    .detail-item .d-label {
+      font-size: 0.65rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .detail-item .d-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-top: 0.1rem;
+    }
+    .detail-item .d-value.alert { color: var(--red-soft); }
+    .detail-item .d-value.warn  { color: var(--orange-soft); }
+    .detail-item .d-value.ok    { color: var(--green-soft); }
+
+    /* BOTÓN DE EMERGENCIA */
+    .emergency-section {
+      padding: 0.75rem 1.1rem;
+      flex-shrink: 0;
+    }
+    .btn-emergency {
+      width: 100%;
+      background: linear-gradient(135deg, #dc2626, #991b1b);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 800;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 20px #dc262644;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-emergency:active { opacity: 0.85; transform: scale(0.985); }
+
+    /* INFO DEL SISTEMA */
+    .sys-info {
+      margin: 0 1.1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.875rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+    .sys-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--text-2);
+    }
+    .sys-item strong { color: var(--text-1); font-weight: 600; }
+
+    /* FOOTER */
+    .monitor-footer {
+      padding: 0.85rem 1.1rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .footer-left {
+      font-size: 0.7rem;
+      color: var(--text-3);
+    }
+    .btn-settings {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 0.75rem;
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-settings:hover { background: var(--border); }
+
+    /* MODAL DE EMERGENCIA */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: #00000099;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+      padding-bottom: var(--safe-bot);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-card);
+      border-radius: 1.5rem 1.5rem 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      padding: 1.5rem 1.5rem 2rem;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.show .modal-sheet { transform: translateY(0); }
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 1.25rem;
+    }
+    .modal-sheet h3 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--red);
+      margin-bottom: 0.5rem;
+    }
+    .modal-sheet p {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      margin-bottom: 1.25rem;
+      line-height: 1.5;
+    }
+    .call-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      background: #dc2626;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      cursor: pointer;
+      margin-bottom: 0.75rem;
+      text-decoration: none;
+    }
+    .cancel-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 0.9rem;
+      border-radius: var(--radius-md);
+      padding: 0.875rem;
+      cursor: pointer;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: calc(1rem + var(--safe-bot));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-1);
+      white-space: nowrap;
+      z-index: 200;
+      transition: transform 0.3s ease, opacity 0.3s;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* LOADING SPINNER */
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── ESTADO SIN CONEXIÓN ─── */
+    .offline-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-deep);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .offline-overlay.show { opacity: 1; pointer-events: all; }
+    .offline-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .offline-overlay h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .offline-overlay p { font-size: 0.85rem; color: var(--text-2); text-align: center; line-height: 1.5; margin-bottom: 1.5rem; }
+    .btn-retry {
+      background: var(--blue);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 0.8rem 2rem;
+      cursor: pointer;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANTALLA 1: CONFIGURACIÓN
+═══════════════════════════════════════════════════════════════ -->
+<div id="screen-config" class="screen">
+  <div class="config-card">
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <h1>SecurityAir</h1>
+      <p>Monitor IoT de Gases y Humo — Lima, Perú</p>
+    </div>
+
+    <div class="step-label">
+      <span>📡</span> Conectar al Sensor
+    </div>
+
+    <div class="field-group">
+      <label>Dirección IP del ESP32</label>
+      <div class="input-wrap">
+        <span class="input-icon">📶</span>
+        <input type="text" id="input-ip" class="ip-input"
+               placeholder="192.168.1.100"
+               value="" inputmode="decimal">
+      </div>
+      <p class="hint">La IP que muestra el monitor serial del ESP32</p>
+    </div>
+
+    <div class="field-group">
+      <label>Red WiFi (Referencia)</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="text" id="input-ssid"
+               placeholder="Nombre de tu red WiFi"
+               inputmode="text" autocomplete="off">
+      </div>
+      <p class="hint">Solo para verificar que el ESP32 está en la misma red</p>
+    </div>
+
+    <button class="btn-primary" id="btn-connect" onclick="intentarConexion()">
+      Conectar y Monitorear
+    </button>
+
+    <hr class="divider">
+
+    <div class="info-block">
+      <strong>¿Cómo configurar?</strong><br>
+      1. Conecta el ESP32 a tu red (sigue el modo AP: <em>SecurityAir_Setup</em>)<br>
+      2. Anota la IP del monitor serial<br>
+      3. Ingresa la IP aquí y pulsa Conectar
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANTALLA 2: MONITOR EN TIEMPO REAL
+═══════════════════════════════════════════════════════════════ -->
+<div id="screen-monitor" class="screen hidden">
+
+  <!-- Header -->
+  <div class="monitor-header">
+    <div class="brand-row">
+      <div class="brand-icon-sm">🛡️</div>
+      <div>
+        <h2>SecurityAir</h2>
+        <p id="hdr-ip">192.168.1.100</p>
+      </div>
+    </div>
+    <div class="conn-badge loading" id="conn-badge">
+      <div class="conn-dot pulse"></div>
+      <span>Conectando</span>
+    </div>
+  </div>
+
+  <!-- Alerta principal -->
+  <div class="alert-banner loading" id="alert-banner">
+    <div class="alert-icon" id="alert-icon">⏳</div>
+    <div class="alert-text">
+      <div class="alert-title">Estado del Sistema</div>
+      <div class="alert-msg" id="alert-msg">Conectando con el sensor...</div>
+    </div>
+  </div>
+
+  <!-- Sensores -->
+  <div class="sensors-section">
+    <div class="section-title">Detección de Humo</div>
+
+    <!-- Tarjeta Humo (MQ-135) -->
+    <div class="sensor-card loading" id="card-smoke">
+      <div class="sensor-header">
+        <div class="sensor-meta">
+          <div class="sensor-icon smoke">💨</div>
+          <div>
+            <div class="sensor-name">MQ-135 — Humo Ambiental</div>
+            <div class="sensor-sub">Detector relativo calibrado a Lima</div>
+          </div>
+        </div>
+        <div class="status-pill loading" id="pill-smoke">--</div>
+      </div>
+
+      <div class="level-row">
+        <div class="level-label">Nivel</div>
+        <div class="level-bar-wrap">
+          <div class="level-bar smoke-bar" id="bar-smoke" style="width:0%"></div>
+        </div>
+        <div class="level-value" id="val-smoke-ppm">-- PPM</div>
+      </div>
+
+      <div class="sensor-details">
+        <div class="detail-item">
+          <div class="d-label">Calidad del Aire</div>
+          <div class="d-value" id="air-quality">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Estado del Sensor</div>
+          <div class="d-value" id="smoke-sensor-status">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Valor ADC</div>
+          <div class="d-value" id="val-smoke-raw">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Desviación</div>
+          <div class="d-value" id="val-smoke-dev">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Detección de Gas</div>
+
+    <!-- Tarjeta Gas (MQ-2) -->
+    <div class="sensor-card loading" id="card-gas">
+      <div class="sensor-header">
+        <div class="sensor-meta">
+          <div class="sensor-icon gas">🔥</div>
+          <div>
+            <div class="sensor-name">MQ-2 — Gas Combustible</div>
+            <div class="sensor-sub">GLP · Metano · Propano</div>
+          </div>
+        </div>
+        <div class="status-pill loading" id="pill-gas">--</div>
+      </div>
+
+      <div class="level-row">
+        <div class="level-label">Nivel</div>
+        <div class="level-bar-wrap">
+          <div class="level-bar gas-bar" id="bar-gas" style="width:0%"></div>
+        </div>
+        <div class="level-value" id="val-gas-ppm">-- PPM</div>
+      </div>
+
+      <div class="sensor-details">
+        <div class="detail-item">
+          <div class="d-label">Tipo de Gas</div>
+          <div class="d-value" id="gas-type">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Estado del Sensor</div>
+          <div class="d-value" id="gas-sensor-status">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Valor ADC</div>
+          <div class="d-value" id="val-gas-raw">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Desviación</div>
+          <div class="d-value" id="val-gas-dev">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info del sistema -->
+  <div class="sys-info">
+    <div class="sys-item">📶 RSSI: <strong id="sys-rssi">--</strong></div>
+    <div class="sys-item">⏱ Uptime: <strong id="sys-uptime">--</strong></div>
+    <div class="sys-item">🌐 <strong id="sys-ip">--</strong></div>
+    <div class="sys-item">🔄 <strong id="sys-refresh">Cada 2 seg</strong></div>
+  </div>
+
+  <!-- Botón emergencia -->
+  <div class="emergency-section">
+    <button class="btn-emergency" onclick="mostrarEmergencia()">
+      📞 Llamada de Emergencia
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="monitor-footer">
+    <div class="footer-left" id="footer-time">Última actualización: --</div>
+    <button class="btn-settings" onclick="volverConfig()">⚙️ Ajustes</button>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL DE EMERGENCIA
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-emergency" onclick="cerrarEmergencia(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3>🚨 Contactos de Emergencia</h3>
+    <p>Si hay riesgo de incendio o fuga de gas, contacta de inmediato a las autoridades:</p>
+    <a href="tel:116" class="call-btn">📞 Bomberos — 116</a>
+    <a href="tel:105" class="call-btn" style="background:#1d4ed8; margin-bottom:.75rem">📞 Policía — 105</a>
+    <a href="tel:106" class="call-btn" style="background:#059669; margin-bottom:.75rem">📞 Serenazgo — 106</a>
+    <button class="cancel-btn" onclick="cerrarEmergencia()">Cancelar</button>
+  </div>
+</div>
+
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+
+<!-- ─── SCRIPT ─── -->
+<script>
+/* ─────────────────────────────────────────────
+   ESTADO GLOBAL
+───────────────────────────────────────────── */
+let ESP32_IP     = '';
+let intervalId   = null;
+let errorCount   = 0;
+const MAX_ERRORS = 5;
+
+/* ─────────────────────────────────────────────
+   NAVEGACIÓN ENTRE PANTALLAS
+───────────────────────────────────────────── */
+function mostrarPantalla(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  void el.offsetWidth; // reflow para la animación
+}
+
+function volverConfig() {
+  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  mostrarPantalla('screen-config');
+}
+
+/* ─────────────────────────────────────────────
+   INTENTO DE CONEXIÓN (Pantalla 1)
+───────────────────────────────────────────── */
+async function intentarConexion() {
+  const ipRaw  = document.getElementById('input-ip').value.trim();
+
+  if (!ipRaw) {
+    mostrarToast('⚠️ Ingresa la IP del ESP32');
+    return;
+  }
+  if (!validarIP(ipRaw)) {
+    mostrarToast('⚠️ IP no válida (ej: 192.168.1.100)');
+    return;
+  }
+
+  ESP32_IP = ipRaw;
+  guardarLocal('esp32_ip', ipRaw);
+  guardarLocal('esp32_ssid', document.getElementById('input-ssid').value.trim());
+
+  const btn = document.getElementById('btn-connect');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Verificando...';
+
+  // Intentar alcanzar el ESP32
+  let ok = false;
+  try {
+    const resp = await fetchConTimeout(`http://${ESP32_IP}/estado`, 5000);
+    if (resp.ok) ok = true;
+  } catch (_) { ok = false; }
+
+  btn.disabled = false;
+  btn.textContent = 'Conectar y Monitorear';
+
+  if (!ok) {
+    mostrarToast('❌ No se pudo contactar al ESP32. Verifica la IP y la red.');
+    return;
+  }
+
+  // ¡Conectado! Ir al monitor
+  document.getElementById('hdr-ip').textContent = ESP32_IP;
+  mostrarPantalla('screen-monitor');
+  errorCount = 0;
+  iniciarMonitor();
+}
+
+function validarIP(ip) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
+         ip.split('.').every(n => +n >= 0 && +n <= 255);
+}
+
+/* ─────────────────────────────────────────────
+   MONITOR EN TIEMPO REAL
+───────────────────────────────────────────── */
+function iniciarMonitor() {
+  actualizarDatos();
+  if (intervalId) clearInterval(intervalId);
+  intervalId = setInterval(actualizarDatos, 2000);
+}
+
+async function actualizarDatos() {
+  try {
+    const resp = await fetchConTimeout(`http://${ESP32_IP}/datos`, 4000);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const data = await resp.json();
+    errorCount = 0;
+    actualizarBadge('ok');
+
+    if (data.listo === false || data.error) {
+      setAlerta('loading', '⏳', data.error || 'Sistema calentando... Espera.');
+      return;
+    }
+
+    renderizarDatos(data);
+
+  } catch (err) {
+    errorCount++;
+    actualizarBadge(errorCount >= MAX_ERRORS ? 'err' : 'warn');
+    setAlerta('caution', '⚠️',
+      errorCount >= 3
+        ? `Sin respuesta del sensor (${errorCount} errores)`
+        : 'Reintentando conexión...'
+    );
+  }
+}
+
+function renderizarDatos(data) {
+  /* ── ALERTA PRINCIPAL ── */
+  const riesgo = data.riesgoIncendio || 'Sin riesgo detectado';
+  if (riesgo.includes('ALERTA')) {
+    setAlerta('danger', '🔴', riesgo);
+    vibrar([300, 100, 300]);
+  } else if (riesgo.includes('ADVERTENCIA')) {
+    setAlerta('caution', '🟡', riesgo);
+  } else if (riesgo.includes('AVISO')) {
+    setAlerta('caution', '🟡', riesgo);
+  } else {
+    setAlerta('safe', '🟢', riesgo);
+  }
+
+  /* ── HUMO (MQ-135) ── */
+  const estadoHumoRaw = (data.estadoHumo || '').trim();
+  const desvHumo = data.desvHumo || 0;
+  const rawHumo  = data.mq135 || 0;
+  const baseHumo = data.baseMQ135 || 1500;
+
+  // Estimación visual de PPM (relativa a la desviación)
+  const ppmHumo  = Math.max(0, Math.round(desvHumo * 0.15));
+  const pctHumo  = Math.min(100, Math.round((desvHumo / 1500) * 100));
+
+  const nivelHumo = clasificarHumo(estadoHumoRaw);
+  aplicarTarjeta('card-smoke', 'pill-smoke', 'bar-smoke', nivelHumo,
+                 traducirHumo(estadoHumoRaw), pctHumo);
+
+  setText('val-smoke-ppm', ppmHumo + ' PPM');
+  setText('val-smoke-raw',  rawHumo);
+  setText('val-smoke-dev',  (desvHumo >= 0 ? '+' : '') + desvHumo);
+  setTextoConClase('air-quality', calidadAire(estadoHumoRaw), clasStat(nivelHumo));
+  setTextoConClase('smoke-sensor-status', estadoSensor(nivelHumo), clasStat(nivelHumo));
+
+  /* ── GAS (MQ-2) ── */
+  const estadoGasRaw = (data.estadoGas || '').trim();
+  const desvGas  = data.desvGas || 0;
+  const rawGas   = data.mq2 || 0;
+
+  const ppmGas   = Math.max(0, Math.round(desvGas * 0.35));
+  const pctGas   = Math.min(100, Math.round((desvGas / 1500) * 100));
+
+  const nivelGas = clasificarGas(estadoGasRaw);
+  aplicarTarjeta('card-gas', 'pill-gas', 'bar-gas', nivelGas,
+                 traducirGas(estadoGasRaw), pctGas);
+
+  setText('val-gas-ppm', ppmGas + ' PPM');
+  setText('val-gas-raw',  rawGas);
+  setText('val-gas-dev',  (desvGas >= 0 ? '+' : '') + desvGas);
+  setTextoConClase('gas-type', tipoGas(estadoGasRaw), clasStat(nivelGas));
+  setTextoConClase('gas-sensor-status', estadoSensor(nivelGas), clasStat(nivelGas));
+
+  /* ── SISTEMA ── */
+  const rssi   = data.rssi   || '--';
+  const uptime = data.uptime || 0;
+  const ip     = data.ip     || ESP32_IP;
+
+  setText('sys-rssi',   rssi + (rssi !== '--' ? ' dBm' : ''));
+  setText('sys-uptime', formatUptime(uptime));
+  setText('sys-ip',     ip);
+
+  const ahora = new Date();
+  setText('footer-time', 'Actualizado: ' + ahora.toLocaleTimeString('es-PE'));
+}
+
+/* ─────────────────────────────────────────────
+   HELPERS DE UI
+───────────────────────────────────────────── */
+function setAlerta(tipo, icono, msg) {
+  const box = document.getElementById('alert-banner');
+  box.className = 'alert-banner ' + tipo;
+  setText('alert-icon', icono);
+  setText('alert-msg',  msg);
+}
+
+function actualizarBadge(estado) {
+  const badge = document.getElementById('conn-badge');
+  const dot   = badge.querySelector('.conn-dot');
+  const span  = badge.querySelector('span');
+  badge.className = 'conn-badge ' + estado;
+  dot.className   = 'conn-dot' + (estado === 'ok' ? '' : ' pulse');
+  span.textContent = estado === 'ok' ? 'Conectado' :
+                     estado === 'warn' ? 'Reconectando' : 'Sin señal';
+}
+
+function aplicarTarjeta(cardId, pillId, barId, nivel, textoEstado, pct) {
+  document.getElementById(cardId).className = 'sensor-card ' + nivel;
+  const pill = document.getElementById(pillId);
+  pill.className   = 'status-pill ' + nivel;
+  pill.textContent = textoEstado;
+  document.getElementById(barId).style.width = pct + '%';
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setTextoConClase(id, texto, clase) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = texto;
+  el.className   = 'd-value ' + clase;
+}
+
+function clasStat(nivel) {
+  return nivel === 'safe' ? 'ok' : nivel === 'caution' ? 'warn' : 'alert';
+}
+
+/* ─────────────────────────────────────────────
+   TRADUCCIONES Y CLASIFICACIONES
+───────────────────────────────────────────── */
+function clasificarHumo(raw) {
+  if (raw.includes('DETECTADO') || raw.includes('DETECTED')) return 'danger';
+  if (raw.includes('POSIBLE')   || raw.includes('POSSIBLE'))  return 'caution';
+  return 'safe';
+}
+function clasificarGas(raw) {
+  if (raw.includes('PELIGRO')   || raw.includes('DANGER'))    return 'danger';
+  if (raw.includes('PRECAUCION')|| raw.includes('CAUTION'))   return 'caution';
+  return 'safe';
+}
+
+function traducirHumo(raw) {
+  if (raw.includes('DETECTADO') || raw.includes('DETECTED')) return 'HUMO DETECTADO';
+  if (raw.includes('POSIBLE')   || raw.includes('POSSIBLE'))  return 'POSIBLE HUMO';
+  return 'SIN HUMO';
+}
+function traducirGas(raw) {
+  if (raw.includes('PELIGRO')   || raw.includes('DANGER'))    return 'PELIGRO';
+  if (raw.includes('PRECAUCION')|| raw.includes('CAUTION'))   return 'PRECAUCIÓN';
+  return 'SEGURO';
+}
+
+function calidadAire(nivelHumo) {
+  if (nivelHumo === 'danger')  return 'MALA';
+  if (nivelHumo === 'caution') return 'MODERADA';
+  return 'BUENA';
+}
+
+function tipoGas(nivelGas) {
+  if (nivelGas === 'danger')  return 'PROPANO / GLP';
+  if (nivelGas === 'caution') return 'POSIBLE GAS';
+  return 'NINGUNO';
+}
+
+function estadoSensor(nivel) {
+  if (nivel === 'danger')  return '⚠️ ALERTA';
+  if (nivel === 'caution') return '🔔 ATENCIÓN';
+  return '✅ NORMAL';
+}
+
+function formatUptime(seg) {
+  if (seg < 60) return seg + 's';
+  if (seg < 3600) return Math.floor(seg/60) + 'm ' + (seg%60) + 's';
+  return Math.floor(seg/3600) + 'h ' + Math.floor((seg%3600)/60) + 'm';
+}
+
+/* ─────────────────────────────────────────────
+   UTILIDADES
+───────────────────────────────────────────── */
+function fetchConTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal })
+    .finally(() => clearTimeout(timer));
+}
+
+function vibrar(patron) {
+  if ('vibrate' in navigator) navigator.vibrate(patron);
+}
+
+function guardarLocal(key, val) {
+  try { localStorage.setItem('sa_' + key, val); } catch(_) {}
+}
+function leerLocal(key) {
+  try { return localStorage.getItem('sa_' + key) || ''; } catch(_) { return ''; }
+}
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+let toastTimer;
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ─────────────────────────────────────────────
+   MODAL EMERGENCIA
+───────────────────────────────────────────── */
+function mostrarEmergencia() {
+  document.getElementById('modal-emergency').classList.add('show');
+}
+function cerrarEmergencia(e) {
+  if (!e || e.target === document.getElementById('modal-emergency')) {
+    document.getElementById('modal-emergency').classList.remove('show');
+  }
+}
+
+/* ─────────────────────────────────────────────
+   INICIALIZACIÓN
+───────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  // Restaurar IP guardada
+  const ip  = leerLocal('esp32_ip');
+  const sid = leerLocal('esp32_ssid');
+  if (ip)  document.getElementById('input-ip').value   = ip;
+  if (sid) document.getElementById('input-ssid').value = sid;
+});
+
+// Registrar Service Worker para modo offline
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

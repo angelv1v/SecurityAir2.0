@@ -1,0 +1,35 @@
+{
+  "name": "SecurityAir — Monitor IoT",
+  "short_name": "SecurityAir",
+  "description": "Monitor en tiempo real de gases y humo con ESP32",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#0a0f1e",
+  "theme_color": "#0a0f1e",
+  "categories": ["utilities", "productivity"],
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Ver Monitor",
+      "url": "./index.html",
+      "description": "Abrir monitor de sensores"
+    }
+  ]
+}
